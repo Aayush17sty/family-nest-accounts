@@ -37,7 +37,7 @@ public class Account {
     private Account parentAccount;
 
     @Column(nullable = false)
-    private boolean isParentAccount;
+    private boolean parentAccount;  // Renamed from isParentAccount to parentAccount
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -50,5 +50,15 @@ public class Account {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
+    }
+    
+    // Custom getter to maintain compatibility
+    public boolean isParentAccount() {
+        return parentAccount;
+    }
+    
+    // Custom setter to maintain compatibility
+    public void setIsParentAccount(boolean isParentAccount) {
+        this.parentAccount = isParentAccount;
     }
 }

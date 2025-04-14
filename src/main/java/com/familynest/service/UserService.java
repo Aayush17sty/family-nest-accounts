@@ -1,4 +1,3 @@
-
 package com.familynest.service;
 
 import com.familynest.dto.LoginRequest;
@@ -90,7 +89,7 @@ public class UserService {
         account.setName(registerRequest.getRole() == User.Role.PARENT ? "Main Account" : "Allowance Account");
         account.setBalance(BigDecimal.ZERO);
         account.setUser(savedUser);
-        account.setIsParentAccount(registerRequest.getRole() == User.Role.PARENT);
+        account.setIsParentAccount(registerRequest.getRole() == User.Role.PARENT); // Using our custom method
         
         if (registerRequest.getRole() == User.Role.CHILD && registerRequest.getParentId() != null) {
             // Link to parent's default account

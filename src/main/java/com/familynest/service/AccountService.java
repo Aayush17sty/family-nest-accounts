@@ -51,7 +51,7 @@ public class AccountService {
         account.setName(name);
         account.setBalance(BigDecimal.ZERO);
         account.setUser(user);
-        account.setIsParentAccount(isParentAccount);
+        account.setIsParentAccount(isParentAccount); // This calls our custom method
         
         if (!isParentAccount && user.getParent() != null) {
             // Link child account to parent's default account
