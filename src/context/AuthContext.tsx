@@ -1,6 +1,7 @@
 
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { User, Account } from "../types";
+import axios from "axios";
 
 interface AuthContextType {
   user: User | null;
@@ -21,6 +22,23 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Create axios instance with base URL
+const api = axios.create({
+  baseURL: "http://localhost:8080/api",
+});
+
+// Axios interceptor to add JWT to each request
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -29,93 +47,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data for demonstration - would be replaced with API calls
-  const mockParentUser: User = {
-    id: "1",
-    username: "parent",
-    email: "parent@example.com",
-    role: "parent",
-  };
-
-  const mockChildUser: User = {
-    id: "2",
-    username: "child",
-    email: "child@example.com",
-    role: "child",
-  };
-
-  const mockAccounts: Account[] = [
-    {
-      id: "1",
-      name: "Parent Savings",
-      balance: 5000,
-      userId: "1",
-      isParentAccount: true,
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "2",
-      name: "Child Allowance",
-      balance: 100,
-      userId: "2",
-      parentId: "1",
-      isParentAccount: false,
-      createdAt: new Date().toISOString(),
-    },
-  ];
-
   useEffect(() => {
-    // Check for stored user in localStorage
+    // Check if user is logged in by checking for token
+    const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
-    if (storedUser) {
+    
+    if (token && storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
       
-      // Simulate fetching accounts
-      setTimeout(() => {
-        if (parsedUser.role === "parent") {
-          setAccounts(mockAccounts);
-          setSelectedAccount(mockAccounts[0]);
-        } else {
-          const childAccount = mockAccounts.find(
-            (acc) => acc.userId === parsedUser.id
-          );
-          setAccounts(childAccount ? [childAccount] : []);
-          setSelectedAccount(childAccount || null);
-        }
-        setIsLoading(false);
-      }, 500);
+      // Fetch accounts for the logged in user
+      fetchUserAccounts(parsedUser.id);
     } else {
       setIsLoading(false);
     }
   }, []);
 
+  const fetchUserAccounts = async (userId: string) => {
+    try {
+      const { data } = await api.get(`/accounts/user/${userId}`);
+      setAccounts(data);
+      
+      if (data.length > 0) {
+        setSelectedAccount(data[0]);
+      }
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error fetching accounts:", error);
+      setIsLoading(false);
+    }
+  };
+
   const login = async (username: string, password: string) => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const { data } = await api.post("/auth/login", { username, password });
+      
+      // Convert backend user to frontend model
+      const loggedInUser: User = {
+        id: data.user.id.toString(),
+        username: data.user.username,
+        email: data.user.email,
+        role: data.user.role.toLowerCase(),
+      };
 
-    let mockUser;
-    if (username === "parent") {
-      mockUser = mockParentUser;
-      localStorage.setItem("user", JSON.stringify(mockParentUser));
-      setUser(mockParentUser);
-      setAccounts(mockAccounts);
-      setSelectedAccount(mockAccounts[0]);
-    } else if (username === "child") {
-      mockUser = mockChildUser;
-      localStorage.setItem("user", JSON.stringify(mockChildUser));
-      setUser(mockChildUser);
-      const childAccount = mockAccounts.find(
-        (acc) => acc.userId === mockChildUser.id
-      );
-      setAccounts(childAccount ? [childAccount] : []);
-      setSelectedAccount(childAccount || null);
-    } else {
+      // Store token and user data
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(loggedInUser));
+      
+      setUser(loggedInUser);
+      
+      // Fetch user accounts
+      await fetchUserAccounts(loggedInUser.id);
+    } catch (error) {
+      console.error("Login error:", error);
       throw new Error("Invalid credentials");
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   const register = async (
@@ -126,37 +116,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     parentId?: string
   ) => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const { data } = await api.post("/auth/register", {
+        username,
+        email,
+        password,
+        role: role.toUpperCase(),
+        parentId: parentId ? parseInt(parentId) : null,
+      });
 
-    // This would normally be handled by the backend
-    const newUser: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      username,
-      email,
-      role,
-    };
-
-    localStorage.setItem("user", JSON.stringify(newUser));
-    setUser(newUser);
-    
-    // Create a default account for the new user
-    const newAccount: Account = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: role === "parent" ? "Main Account" : "Allowance Account",
-      balance: 0,
-      userId: newUser.id,
-      parentId: role === "child" ? parentId : undefined,
-      isParentAccount: role === "parent",
-      createdAt: new Date().toISOString(),
-    };
-    
-    setAccounts([newAccount]);
-    setSelectedAccount(newAccount);
-    setIsLoading(false);
+      // Auto login after registration
+      await login(username, password);
+      
+    } catch (error) {
+      console.error("Registration error:", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const logout = () => {
+    localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
     setAccounts([]);
