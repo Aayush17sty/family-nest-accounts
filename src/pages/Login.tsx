@@ -38,7 +38,7 @@ const Login = () => {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Invalid credentials. Please check your username and password.",
+        description: "Invalid credentials. Try using 'parent' or 'child'",
         variant: "destructive",
       });
     } finally {
@@ -63,7 +63,7 @@ const Login = () => {
                 <Input
                   id="username"
                   type="text"
-                  placeholder="Enter your username"
+                  placeholder="Try 'parent' or 'child'"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                 />
@@ -73,7 +73,7 @@ const Login = () => {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Enter your password"
+                  placeholder="Enter any password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
