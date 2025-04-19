@@ -22,9 +22,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Create axios instance with base URL
+// Create axios instance with base URL (using relative URL instead of localhost)
 const api = axios.create({
-  baseURL: "http://localhost:8080/api",
+  baseURL: "/api",
 });
 
 // Axios interceptor to add JWT to each request
@@ -82,7 +82,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const login = async (username: string, password: string) => {
     setIsLoading(true);
     try {
+      console.log("Attempting login with:", { username, password });
       const { data } = await api.post("/auth/login", { username, password });
+      console.log("Login response:", data);
       
       // Convert backend user to frontend model
       const loggedInUser: User = {
